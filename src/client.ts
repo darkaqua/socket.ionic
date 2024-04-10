@@ -9,7 +9,6 @@ export const getClientSocket = (url: string, protocols: string[] =[]) => {
 	
 	// Listen for messages
 	socket.addEventListener('message', ({ data }) => {
-		console.log(data)
 		const { event, message } = JSON.parse(data);
 		events[event] && events[event](message);
 	});
