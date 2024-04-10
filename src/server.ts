@@ -12,7 +12,7 @@ export const getServerSocket = (
 		if (request.headers.get('upgrade') !== 'websocket')
 			return new Response(null, { status: 501 });
 		
-		const protocols = request.headers.get('Sec-WebSocket-Protocol').split(',')
+		const protocols = (request.headers.get('Sec-WebSocket-Protocol') || '').split(',')
 		const { socket, response } = Deno.upgradeWebSocket(request);
 		
 		const clientEvents: Record<string, any[]> = {};
@@ -33,7 +33,7 @@ export const getServerSocket = (
 				return clientEvents[event].push(callback) -1;
 			},
 			remove: (event: string, id: number) =>
-				clientEvents[event] = clientEvents[event].filter((_,index) => index !== id),
+				clientEvents[event] = clientEvents[event].filter((client,index) => index === id ? undefined : client),
 			rooms: [],
 			getRooms: () => clientList[clientId].rooms.map(name => roomList[name]),
 			addRoom: (name: string) => {
@@ -65,8 +65,9 @@ export const getServerSocket = (
 		};
 		socket.onmessage = ({ data }) => {
 			const { event, message } = JSON.parse(data);
-			if(clientEvents[event])
-				for (const callback of clientEvents[event])
+			const clientEventList = (clientEvents[event] || []).filter(Boolean);
+			if(clientEventList.length)
+				for (const callback of clientEventList)
 					callback(message)
 		};
 		socket.onclose = () => {
