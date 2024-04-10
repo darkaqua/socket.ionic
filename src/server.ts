@@ -1,24 +1,32 @@
 import {getRandomString} from "./utis.ts";
 import {Room, ServerClient} from "./types.ts";
 
-export const getServerSocket = (port: number) => {
+export const getServerSocket = (
+	port: number
+) => {
 	const clientList: Record<string, ServerClient> = {};
 	const roomList: Record<string, Room> = {};
 	const events: Record<string, any> = {};
 	
-	Deno.serve({ port }, req => {
-		if (req.headers.get('upgrade') !== 'websocket')
+	Deno.serve({ port }, async (request) => {
+		if (request.headers.get('upgrade') !== 'websocket')
 			return new Response(null, { status: 501 });
 		
-		const { socket, response } = Deno.upgradeWebSocket(req);
+		const protocols = request.headers.get('Sec-WebSocket-Protocol').split(',')
+		const { socket, response } = Deno.upgradeWebSocket(request);
 		
 		const clientEvents: Record<string, any[]> = {};
 		
 		const clientId = getRandomString(16);
+		
+		if(events.guest && !events.guest(clientId, protocols)) return new Response(null, { status: 403 });
+		
 		const client: ServerClient = {
 			id: clientId,
-			emit: (event: string, message: any) =>
-				socket.send(JSON.stringify({ event, message })),
+			emit: (event: string, message: any) => {
+				if(socket.readyState !== WebSocket.OPEN) return;
+				socket.send(JSON.stringify({ event, message }))
+			},
 			on: (event: string, callback: (data?: any) => void) => {
 				if(!clientEvents[event])
 					clientEvents[event] = [];
@@ -29,12 +37,18 @@ export const getServerSocket = (port: number) => {
 			rooms: [],
 			getRooms: () => clientList[clientId].rooms.map(name => roomList[name]),
 			addRoom: (name: string) => {
+				if(clientList[clientId].rooms.includes(name))
+					return console.warn(`Client ${clientId} is already in room ${name}!`);
+				
 				clientList[clientId].rooms.push(name);
 				if (!roomList[name]) throw `Room ${name} not found`;
 				
 				roomList[name].clients.push(clientId);
 			},
 			removeRoom: (name: string) => {
+				if(!clientList[clientId].rooms.includes(name))
+					return console.warn(`Client ${clientId} is not in room ${name}!`);
+				
 				clientList[clientId].rooms.push(name);
 				
 				if (!roomList[name]) throw `Room ${name} not found`;
@@ -57,6 +71,9 @@ export const getServerSocket = (port: number) => {
 		};
 		socket.onclose = () => {
 			events.disconnected && events.disconnected(client);
+			for (const room of Object.values(roomList))
+				room.clients = room.clients.filter(clientId => client.id !== clientId);
+			
 			delete clientList[client.id];
 		};
 		socket.onerror = error => {
@@ -71,7 +88,7 @@ export const getServerSocket = (port: number) => {
 	};
 	
 	const on = (
-		event: 'connected' | 'disconnected' | 'error',
+		event: 'connected' | 'disconnected' | 'error' | 'guest',
 		callback: (client: ServerClient, data?: any) => void,
 	) => {
 		events[event] = callback;
@@ -85,7 +102,7 @@ export const getServerSocket = (port: number) => {
 			name,
 			emit: (event: string, message: any) => {
 				for (const client of roomList[name].getClients())
-					client.emit(JSON.stringify({ event, message }));
+					client.emit(event, message);
 			},
 			
 			clients: [],
@@ -121,5 +138,6 @@ export const getServerSocket = (port: number) => {
 		getClient,
 		getRoom,
 		removeRoom,
+		
 	};
 };
