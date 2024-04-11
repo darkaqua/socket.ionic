@@ -8,7 +8,7 @@ export const getServerSocket = (
 	const roomList: Record<string, Room> = {};
 	const events: Record<string, any> = {};
 	
-	Deno.serve({ port }, async (request) => {
+	const server = Deno.serve({ port }, async (request) => {
 		if (request.headers.get('upgrade') !== 'websocket')
 			return new Response(null, { status: 501 });
 		
@@ -130,6 +130,8 @@ export const getServerSocket = (
 		delete roomList[name];
 	};
 	
+	const close = () => server.shutdown()
+	
 	return {
 		on,
 		/**
@@ -139,6 +141,6 @@ export const getServerSocket = (
 		getClient,
 		getRoom,
 		removeRoom,
-		
+		close
 	};
 };

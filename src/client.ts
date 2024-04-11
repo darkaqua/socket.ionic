@@ -28,8 +28,11 @@ export const getClientSocket = (url: string, protocols: string[] =[]) => {
 		callback: (data?: any) => void,
 	) => events[event] = callback;
 	
+	const close = () => socket.close();
+	
 	return {
 		emit,
 		on,
+		close
 	};
 };
