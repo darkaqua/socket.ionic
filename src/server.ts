@@ -12,8 +12,11 @@ export const getServerSocket = (
 		if (request.headers.get('upgrade') !== 'websocket')
 			return new Response(null, { status: 501 });
 		
-		const protocols = (request.headers.get('Sec-WebSocket-Protocol') || '').split(', ')
-		const { socket, response } = Deno.upgradeWebSocket(request);
+		const protocol = request.headers.get('Sec-WebSocket-Protocol');
+		const protocols = (protocol || '').split(', ')
+		const { socket, response } = Deno.upgradeWebSocket(request, {
+			protocol
+		});
 		
 		const clientEvents: Record<string, any[]> = {};
 		
