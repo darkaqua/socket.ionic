@@ -14,8 +14,9 @@ export const getServerSocket = (
 		
 		const protocol = request.headers.get('Sec-WebSocket-Protocol');
 		const protocols = (protocol || '').split(', ')
+		
 		const { socket, response } = Deno.upgradeWebSocket(request, {
-			protocol
+			protocol: protocols[0]
 		});
 		
 		const clientEvents: Record<string, any[]> = {};
