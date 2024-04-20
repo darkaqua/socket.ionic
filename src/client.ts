@@ -4,19 +4,17 @@ type Props = {
   reconnectIntents?: number;
   reconnectInterval?: number;
   silent?: boolean;
-  protocols?: string[]
+  protocols?: string[];
 };
 
-export const getClientSocket = (
-  {
-    url,
-    reconnect = true,
-    reconnectIntents = 10,
-    reconnectInterval = 1_000,
-    silent = false,
-    protocols = []
-  }: Props
-) => {
+export const getClientSocket = ({
+  url,
+  reconnect = true,
+  reconnectIntents = 10,
+  reconnectInterval = 1_000,
+  silent = false,
+  protocols = [],
+}: Props) => {
   const events: Record<string, any> = {};
 
   let socket;
@@ -25,6 +23,8 @@ export const getClientSocket = (
 
   const connect = async () =>
     new Promise((resolve, reject) => {
+      if (isConnected) return resolve();
+
       !silent && reconnects === 0 && console.log(`Connecting to ${url}!`);
       socket = new WebSocket(`ws://${url}`, protocols);
 
@@ -45,28 +45,24 @@ export const getClientSocket = (
 
       socket.addEventListener("error", () => events.error && events.error());
 
-      socket.addEventListener(
-        "close",
-        () => {
-          !silent && isConnected && console.log(`Disconnected from ${url}!`);
-          isConnected = false;
+      socket.addEventListener("close", () => {
+        !silent && isConnected && console.log(`Disconnected from ${url}!`);
 
-          if (reconnect && reconnectIntents > reconnects) {
-            reconnects++;
-            !silent &&
-              console.log(
-                `(${reconnects}/${reconnectIntents}) Reconnecting to ${url} in ${reconnectInterval}ms...`,
-              );
-            setTimeout(async () => {
-              await connect();
-              resolve();
-            }, reconnectInterval);
-            return;
-          }
-          events.disconnected && events.disconnected();
-          resolve();
-        },
-      );
+        if (reconnect && reconnectIntents > reconnects) {
+          reconnects++;
+          !silent &&
+            console.log(
+              `(${reconnects}/${reconnectIntents}) Reconnecting to ${url} in ${reconnectInterval}ms...`,
+            );
+          setTimeout(async () => {
+            await connect();
+            resolve();
+          }, reconnectInterval);
+          return;
+        }
+        events.disconnected && events.disconnected();
+        resolve();
+      });
     });
 
   const emit = (event: string, message?: any) =>
@@ -75,7 +71,7 @@ export const getClientSocket = (
   const on = (
     event: "connected" | "disconnected" | "error" | string,
     callback: (data?: any) => void,
-  ) => events[event] = callback;
+  ) => (events[event] = callback);
 
   const close = () => socket.close();
 
