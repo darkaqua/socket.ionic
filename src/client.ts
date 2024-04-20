@@ -4,6 +4,7 @@ type Props = {
   reconnectIntents?: number;
   reconnectInterval?: number;
   silent?: boolean;
+  protocols?: string[]
 };
 
 export const getClientSocket = (
@@ -13,7 +14,8 @@ export const getClientSocket = (
     reconnectIntents = 10,
     reconnectInterval = 1_000,
     silent = false,
-  }: Props,
+    protocols = []
+  }: Props
 ) => {
   const events: Record<string, any> = {};
 
@@ -24,7 +26,7 @@ export const getClientSocket = (
   const connect = async () =>
     new Promise((resolve, reject) => {
       !silent && reconnects === 0 && console.log(`Connecting to ${url}!`);
-      socket = new WebSocket(`ws://${url}`);
+      socket = new WebSocket(`ws://${url}`, protocols);
 
       // Connection opened
       socket.addEventListener("open", () => {
