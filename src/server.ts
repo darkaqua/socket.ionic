@@ -3,15 +3,16 @@ import { Room, ServerClient } from "./types.ts";
 
 export const getServerSocket = (
   port: number,
+  next = (request: Request) => new Response(null, { status: 501 })
 ) => {
   const clientList: Record<string, ServerClient> = {};
   const roomList: Record<string, Room> = {};
   const events: Record<string, any> = {};
 
-  const server = Deno.serve({ port }, async (request) => {
-    if (request.headers.get("upgrade") !== "websocket") {
-      return new Response(null, { status: 501 });
-    }
+  const server = Deno.serve({ port }, async (request: Request) => {
+    
+    if (request.headers.get("upgrade") !== "websocket")
+      return next(request);
 
     const protocol = request.headers.get("Sec-WebSocket-Protocol");
     const protocols = (protocol || "").split(", ");
