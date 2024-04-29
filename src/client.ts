@@ -7,6 +7,13 @@ type Props = {
   protocols?: string[];
 };
 
+enum ReadyState {
+  CONNECTING,
+  OPEN,
+  CLOSING,
+  CLOSED
+}
+
 export const getClientSocket = ({
   url,
   reconnect = true,
@@ -65,8 +72,10 @@ export const getClientSocket = ({
       });
     });
 
-  const emit = (event: string, message?: any) =>
+  const emit = (event: string, message?: any) => {
+    if(socket.readyState !== ReadyState.OPEN) throw new Error(`Socket is not open (${ReadyState[socket.readyState]}})!`)
     socket.send(JSON.stringify({ event, message }));
+  }
 
   const on = (
     event: "connected" | "disconnected" | "error" | string,
