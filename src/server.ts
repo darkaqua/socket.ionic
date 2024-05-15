@@ -31,11 +31,19 @@ export const getServerSocket = (
 
     const client: ServerClient = {
       id: clientId,
-      emit: (event: string, message: any) => {
+      emit: (event: string, message?: any, response?: (message?: any) => void) => {
         if (socket.readyState !== WebSocket.OPEN) return;
-        socket.send(JSON.stringify({ event, message }));
+        
+        let responseEventId = null
+        if(response) {
+          responseEventId = getRandomString(32)
+          
+          client.on(`${event}#${responseEventId}`, (data) => response(data))
+        }
+        
+        socket.send(JSON.stringify({ event, message, responseEventId }));
       },
-      on: (event: string, callback: (data?: any) => void) => {
+      on: (event: string, callback: (data?: any) => Promise<any> | any) => {
         if (!clientEvents[event]) {
           clientEvents[event] = [];
         }
@@ -76,12 +84,18 @@ export const getServerSocket = (
     socket.onopen = () => {
       events.connected && events.connected(client);
     };
-    socket.onmessage = ({ data }) => {
-      const { event, message } = JSON.parse(data);
+    socket.onmessage = async ({ data }) => {
+      const { event, message, responseEventId } = JSON.parse(data);
       const clientEventList = (clientEvents[event] || []).filter(Boolean);
+      
       if (clientEventList.length) {
         for (const callback of clientEventList) {
-          callback(message);
+          const responseMessage = await callback(message);
+          if(responseMessage)
+            socket.send(JSON.stringify({
+              event: `${event}#${responseEventId}`,
+              message: responseMessage
+            }));
         }
       }
     };

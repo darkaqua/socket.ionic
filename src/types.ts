@@ -1,7 +1,7 @@
 export type ServerClient = {
   id: string;
-  emit: (event: string, data?: any) => void;
-  on: (event: string, callback: (data?: any) => void) => void;
+  emit: (event: string, data?: any, response?: (message?: any) => void) => void;
+  on: (event: string, callback: (data?: any) => Promise<void> | any) => void;
   remove: (event: string, id: number) => void;
   rooms: string[];
 
