@@ -28,21 +28,25 @@ export const getServerSocket = (
     if (events.guest && !events.guest(clientId, protocols)) {
       return new Response(null, { status: 403 });
     }
+    
+    const emit = (event: string, message?: any, response?: (message?: any) => void) => {
+      if (socket.readyState !== WebSocket.OPEN) return;
+      
+      let responseEventId = null
+      if(response) {
+        responseEventId = getRandomString(32)
+        
+        client.on(`${event}#${responseEventId}`, (data) => response(data))
+      }
+      
+      socket.send(JSON.stringify({ event, message, responseEventId }));
+    }
 
     const client: ServerClient = {
       id: clientId,
-      emit: (event: string, message?: any, response?: (message?: any) => void) => {
-        if (socket.readyState !== WebSocket.OPEN) return;
-        
-        let responseEventId = null
-        if(response) {
-          responseEventId = getRandomString(32)
-          
-          client.on(`${event}#${responseEventId}`, (data) => response(data))
-        }
-        
-        socket.send(JSON.stringify({ event, message, responseEventId }));
-      },
+      getSocket: () => socket,
+      _emit: emit,
+      emit,
       on: (event: string, callback: (data?: any) => Promise<any> | any) => {
         if (!clientEvents[event]) {
           clientEvents[event] = [];
@@ -117,7 +121,7 @@ export const getServerSocket = (
   });
 
   const emit = (event: string, data?: any) => {
-    for (const client of Object.values(clientList)) client.emit(event, data);
+    for (const client of Object.values(clientList)) client._emit(event, data);
   };
 
   const on = (
@@ -135,7 +139,7 @@ export const getServerSocket = (
       name,
       emit: (event: string, message: any) => {
         for (const client of roomList[name].getClients()) {
-          client.emit(event, message);
+          client._emit(event, message);
         }
       },
 
