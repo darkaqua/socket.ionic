@@ -75,7 +75,8 @@ export const getClientSocket = ({
 
       socket.addEventListener("close", () => {
         !silent && isConnected && console.log(`Disconnected from ${url}!`);
-
+        
+        isConnected = false;
         if (reconnect && reconnectIntents > reconnects) {
           reconnects++;
           !silent &&
