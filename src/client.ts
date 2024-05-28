@@ -40,6 +40,7 @@ export const getClientSocket = ({
   let socket;
   let reconnects = 0;
   let isConnected = false;
+  let isClosed = false
 
   const connect = async () =>
     new Promise((resolve, reject) => {
@@ -76,6 +77,9 @@ export const getClientSocket = ({
       socket.addEventListener("close", () => {
         !silent && isConnected && console.log(`Disconnected from ${url}!`);
         
+        // resovle if it's already closed
+        if(isClosed) return resolve(null);
+        
         isConnected = false;
         if (reconnect && reconnectIntents > reconnects) {
           reconnects++;
@@ -111,7 +115,10 @@ export const getClientSocket = ({
     callback: (data?: any) => void,
   ) => (events[event] = callback);
 
-  const close = () => socket.close();
+  const close = () => {
+    isClosed = true
+    socket.close();
+  }
 
   return {
     connect,
