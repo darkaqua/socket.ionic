@@ -73,9 +73,9 @@ export const getClientSocket = ({
             }));
         });
         
-        socket.addEventListener("error", () => events.error && events.error());
+        socket.addEventListener("error", (message) => events.error && events.error(message));
         
-        socket.addEventListener("close", () => {
+        socket.addEventListener("close", (message) => {
           !silent && isConnected && console.log(`Disconnected from ${url}!`);
           
           // resovle if it's already closed
@@ -94,7 +94,7 @@ export const getClientSocket = ({
             }, reconnectInterval);
             return;
           }
-          events.disconnected && events.disconnected();
+          events.disconnected && events.disconnected(message);
           resolve(null);
         });
       } catch (e) {
