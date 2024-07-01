@@ -39,7 +39,7 @@ export const getServerSocket = (
         client.on(`${event}#${responseEventId}`, (data) => response(data))
       }
       
-      socket.send(JSON.stringify({ event, message, responseEventId }));
+      socket.send(JSON.stringify({ event, message: message || {}, responseEventId }));
     }
 
     const client: ServerClient = {
