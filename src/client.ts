@@ -99,7 +99,8 @@ export const getClientSocket = ({
     });
 
   const emit = (event: string, message?: any, response?: (message?: any) => void) => {
-    if(socket.readyState !== ReadyState.OPEN) throw new Error(`Socket is not open (${ReadyState[socket.readyState]}})!`)
+    if(socket.readyState !== ReadyState.OPEN)
+      throw new Error(`Socket is not open (${ReadyState[socket.readyState]}}) {${event}:${message}}!`)
     
     let responseEventId = null
     if(response) {
