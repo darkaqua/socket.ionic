@@ -13,6 +13,8 @@ export type ServerClient = {
   addRoom: (name: string) => void;
   removeRoom: (name: string) => void;
   
+  close: (code?: number, reason?: string) => void
+  
   getSocket: () => WebSocket
 };
 

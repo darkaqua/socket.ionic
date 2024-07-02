@@ -82,6 +82,7 @@ export const getServerSocket = (
           (_clientId) => _clientId !== clientId,
         );
       },
+      close: (code, reason) => socket.close(code, reason)
     };
     clientList[client.id] = client;
 
