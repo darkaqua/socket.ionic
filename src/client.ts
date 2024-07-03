@@ -42,13 +42,13 @@ export const getClientSocket = ({
   let isConnected = false;
   let isClosed = false
 
-  const connect = async (secure: boolean = false) =>
+  const connect = async () =>
     new Promise((resolve, reject) => {
       try {
         if (isConnected) return resolve(null);
         
         !silent && reconnects === 0 && console.log(`Connecting to ${url}!`);
-        socket = new WebSocket(`${secure ? 'wss' : 'ws'}://${url}`, protocols);
+        socket = new WebSocket(url, protocols);
         
         // Connection opened
         socket.addEventListener("open", () => {
