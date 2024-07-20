@@ -29,17 +29,10 @@ export const getServerSocket = (
       return new Response(null, { status: 403 });
     }
     
-    const emit = (event: string, message?: any, response?: (message?: any) => void) => {
+    const emit = (event: string, message?: any) => {
       if (socket.readyState !== WebSocket.OPEN) return;
       
-      let responseEventId = null
-      if(response) {
-        responseEventId = getRandomString(32)
-        
-        client.on(`${event}#${responseEventId}`, (data) => response(data))
-      }
-      
-      socket.send(JSON.stringify({ event, message: message || {}, responseEventId }));
+      socket.send(JSON.stringify({ event, message: message || {} }));
     }
 
     const client: ServerClient = {
@@ -90,19 +83,12 @@ export const getServerSocket = (
       events.connected && events.connected(client);
     };
     socket.onmessage = async ({ data }) => {
-      const { event, message, responseEventId } = JSON.parse(data);
+      const { event, message } = JSON.parse(data);
       const clientEventList = (clientEvents[event] || []).filter(Boolean);
       
-      if (clientEventList.length) {
-        for (const callback of clientEventList) {
-          const responseMessage = await callback(message);
-          if(responseMessage)
-            socket.send(JSON.stringify({
-              event: `${event}#${responseEventId}`,
-              message: responseMessage
-            }));
-        }
-      }
+      if (clientEventList.length)
+        for (const callback of clientEventList)
+          callback(message);
     };
     socket.onclose = () => {
       events.disconnected && events.disconnected(client);
@@ -148,6 +134,9 @@ export const getServerSocket = (
       getClients: () =>
         roomList[name].clients.map((clientId) => clientList[clientId]),
       addClient: (clientId: string) => {
+        //Already inside the room
+        if(roomList[name].clients.includes(clientId)) return;
+        
         if (!clientList[clientId]) throw `Client ${clientId} not found`;
 
         roomList[name].clients.push(clientId);
@@ -155,7 +144,7 @@ export const getServerSocket = (
       removeClient: (clientId: string) => {
         if (!clientList[clientId]) throw `Client ${clientId} not found`;
 
-        roomList[name].clients.push(clientId);
+        roomList[name].clients = roomList[name].clients.filter($clientId => clientId !== $clientId);
       },
     };
     roomList[name] = room;
