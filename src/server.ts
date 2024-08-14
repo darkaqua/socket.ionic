@@ -25,7 +25,7 @@ export const getServerSocket = (
 
     const clientId = getRandomString(16);
 
-    if (events.guest && !events.guest(clientId, protocols)) {
+    if (events.guest && await !events.guest(clientId, protocols)) {
       return new Response(null, { status: 403 });
     }
     
