@@ -25,9 +25,10 @@ export const getServerSocket = (
 
     const clientId = getRandomString(16);
 
-    if (events.guest && !(await events.guest(clientId, protocols))) {
+    const guestIsNotWelcome = events.guest && !(await events.guest(clientId, protocols));
+    console.log(guestIsNotWelcome, '<<<<<<<<<<<<<<<<<<<<,')
+    if (guestIsNotWelcome)
       return new Response(null, { status: 403 });
-    }
     
     const emit = (event: string, message?: any) => {
       if (socket.readyState !== WebSocket.OPEN) return;
