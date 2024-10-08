@@ -1,0 +1,5 @@
+{
+  "name": "@da/socket",
+  "version": "0.0.0",
+  "exports": "./index.ts"
+}

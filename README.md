@@ -1,9 +1,9 @@
-# SOCKET.ionic
+# @da/socket
 
 ## Server
 
 ```ts
-import { getServerSocket } from "https://deno.land/x/socket_ionic/mod.ts";
+import { getServerSocket } from "@da/socket";
 
 const server = getServerSocket(1994);
 

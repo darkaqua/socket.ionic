@@ -7,17 +7,31 @@ type Props = {
   protocols?: string[];
 };
 
+type Mutable = {
+  connect: () => Promise<void>;
+  emit: (
+    event: string,
+    message?: unknown,
+    response?: (message?: unknown) => void,
+  ) => void;
+  on: (
+    event: "connected" | "disconnected" | "error",
+    callback: (data?: unknown) => void,
+  ) => () => void;
+  close: () => void;
+};
+
 enum ReadyState {
   CONNECTING,
   OPEN,
   CLOSING,
-  CLOSED
+  CLOSED,
 }
 
 const getRandomString = (length: number) => {
-  let result = '';
+  let result = "";
   const characters =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const charactersLength = characters.length;
   let counter = 0;
   while (counter < length) {
@@ -34,101 +48,115 @@ export const getClientSocket = ({
   reconnectInterval = 1_000,
   silent = false,
   protocols = [],
-}: Props) => {
-  const events: Record<string, any[]> = {};
+}: Props): Mutable => {
+  const events: Record<string, ((data?: unknown) => unknown | null)[]> = {};
 
-  let socket;
+  let socket: WebSocket;
   let reconnects = 0;
   let isConnected = false;
-  let isClosed = false
-  
-  const emitEventCallback = (event: string, data?: any) => {
-    if(!events[event]) return;
-    
-    for (const callback of events[event]) callback?.(data)
-  }
-  
-  const connect = async () =>
-    new Promise((resolve, reject) => {
+  let isClosed = false;
+
+  const emitEventCallback = (event: string, data?: unknown) => {
+    if (!events[event]) return;
+
+    for (const callback of events[event]) callback?.(data);
+  };
+
+  const connect = (): Promise<void> =>
+    new Promise<void>((resolve, reject) => {
       try {
-        if (isConnected) return resolve(null);
-        
+        if (isConnected) return resolve();
+
         !silent && reconnects === 0 && console.log(`Connecting to ${url}!`);
         socket = new WebSocket(url, protocols);
-        
+
         // Connection opened
         socket.addEventListener("open", () => {
           isConnected = true;
           !silent && console.log(`Connected to ${url}!`);
-          emitEventCallback('connected')
-          resolve(null);
+          emitEventCallback("connected");
+          resolve();
           reconnects = 0;
         });
-        
+
         // Listen for messages
-        socket.addEventListener("message", async ({ data }) => {
+        socket.addEventListener("message", ({ data }) => {
           const { event, message } = JSON.parse(data);
-          if(!events[event]) return
-          
-          emitEventCallback(event, message)
+          if (!events[event]) return;
+
+          emitEventCallback(event, message);
         });
-        
-        socket.addEventListener("error", (message) => emitEventCallback('error', message));
-        
+
+        socket.addEventListener("error", (message) =>
+          emitEventCallback("error", message),
+        );
+
         socket.addEventListener("close", (message) => {
           !silent && isConnected && console.log(`Disconnected from ${url}!`);
-          
+
           // resovle if it's already closed
-          if(isClosed) return resolve(null);
-          
+          if (isClosed) return resolve();
+
           isConnected = false;
           if (reconnect && reconnectIntents > reconnects) {
             reconnects++;
             !silent &&
-            console.log(
-              `(${reconnects}/${reconnectIntents}) Reconnecting to ${url} in ${reconnectInterval}ms...`,
-            );
+              console.log(
+                `(${reconnects}/${reconnectIntents}) Reconnecting to ${url} in ${reconnectInterval}ms...`,
+              );
             setTimeout(async () => {
               await connect();
-              resolve(null);
+              resolve();
             }, reconnectInterval);
             return;
           }
-          emitEventCallback('disconnected', message)
-          resolve(null);
+          emitEventCallback("disconnected", message);
+          resolve();
         });
       } catch (e) {
-        reject(e)
+        reject(e);
       }
     });
 
-  const emit = (event: string, message?: any, response?: (message?: any) => void) => {
-    if(socket.readyState !== ReadyState.OPEN)
-      throw new Error(`Socket is not open (${ReadyState[socket.readyState]}}) {${event}:${message}}!`)
-    
-    let responseEventId = null
-    if(response) {
-      responseEventId = getRandomString(32)
-      
-      on(`${event}#${responseEventId}`, (data) => response(data))
+  const emit = (
+    event: string,
+    message?: unknown,
+    response?: (message?: unknown) => void,
+  ): void => {
+    if (socket.readyState !== ReadyState.OPEN)
+      throw new Error(
+        `Socket is not open (${ReadyState[socket.readyState]}}) {${event}:${message}}!`,
+      );
+
+    let responseEventId = null;
+    if (response) {
+      responseEventId = getRandomString(32);
+
+      on(`${event}#${responseEventId}`, (data) => response(data));
     }
-    socket.send(JSON.stringify({ event, message: message || {}, responseEventId }));
-  }
+    socket.send(
+      JSON.stringify({ event, message: message || {}, responseEventId }),
+    );
+  };
 
   const on = (
     event: "connected" | "disconnected" | "error" | string,
-    callback: (data?: any) => void,
-  ) => {
-    if(!events[event]) events[event] = []
-    
-    const index = events[event].push(callback) - 1
-    return () => events[event] = events[event].map((callback, $index) => index === $index ? null : callback)
-  }
+    callback: (data?: unknown) => void,
+  ): (() => void) => {
+    if (!events[event]) events[event] = [];
+
+    const index = events[event].push(callback) - 1;
+    return () =>
+      (events[event] = events[event].map<(data?: unknown) => unknown>(
+        (callback, $index) =>
+          (index === $index ? null : callback) as (data?: unknown) => unknown,
+      ));
+  };
 
   const close = () => {
-    isClosed = true
+    isClosed = true;
     socket.close();
-  }
+  };
 
   return {
     connect,
