@@ -3,8 +3,10 @@ import type { Room, ServerClient, ServerSocket } from "./types.ts";
 
 export const getServerSocket = (
   port: number,
-  next = (request: Request, connInfo: Deno.ServeHandlerInfo) =>
-    new Response(null, { status: 501 }),
+  next: (request: Request, connInfo: Deno.ServeHandlerInfo) => Response = (
+    request: Request,
+    connInfo: Deno.ServeHandlerInfo,
+  ) => new Response(null, { status: 501 }),
 ): ServerSocket => {
   const clientList: Record<string, ServerClient> = {};
   const roomList: Record<string, Room> = {};
