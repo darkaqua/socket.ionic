@@ -25,7 +25,7 @@ export const getServerSocket = (
     const clientId = getRandomString(16);
 
     const guestIsNotWelcome =
-      events.guest && !(await events.guest(clientId, protocols));
+      events.guest && !(await events.guest(clientId, protocols, connInfo));
     if (guestIsNotWelcome) return new Response(null, { status: 403 });
 
     const { socket, response } = Deno.upgradeWebSocket(request, {
