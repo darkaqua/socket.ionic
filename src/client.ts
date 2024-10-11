@@ -74,31 +74,22 @@ export const getClientSocket = ({
       try {
         if (isConnected) return resolve();
 
-        !silent && reconnects === 0 && console.log(`Connecting to ${url}!`);
-        socket = new WebSocket(url, protocols);
-
-        // Connection opened
-        socket.addEventListener("open", () => {
+        const $onOpen = () => {
           isConnected = true;
           !silent && console.log(`Connected to ${url}!`);
           emitEventCallback("connected");
           resolve();
           reconnects = 0;
-        });
-
-        // Listen for messages
-        socket.addEventListener("message", ({ data }) => {
+        };
+        const $onMessage = ({ data }: any) => {
           const { event, message } = JSON.parse(data);
           if (!events[event]) return;
 
           emitEventCallback(event, message);
-        });
-
-        socket.addEventListener("error", (message) =>
-          emitEventCallback("error", message),
-        );
-
-        socket.addEventListener("close", (message) => {
+        };
+        const $onError = (message: unknown) =>
+          emitEventCallback("error", message);
+        const $onClose = (message: unknown) => {
           !silent && isConnected && console.log(`Disconnected from ${url}!`);
 
           // resovle if it's already closed
@@ -106,6 +97,7 @@ export const getClientSocket = ({
 
           isConnected = false;
           if (reconnect && reconnectIntents > reconnects) {
+            emitEventCallback("reconnecting");
             reconnects++;
             !silent &&
               console.log(
@@ -119,7 +111,22 @@ export const getClientSocket = ({
           }
           emitEventCallback("disconnected", message);
           resolve();
-        });
+        };
+
+        if (socket) {
+          socket.removeEventListener("open", $onOpen);
+          socket.removeEventListener("message", $onMessage);
+          socket.removeEventListener("error", $onError);
+          socket.removeEventListener("close", $onClose);
+        }
+
+        !silent && reconnects === 0 && console.log(`Connecting to ${url}!`);
+        socket = new WebSocket(url, protocols);
+
+        socket.addEventListener("open", $onOpen);
+        socket.addEventListener("message", $onMessage);
+        socket.addEventListener("error", $onError);
+        socket.addEventListener("close", $onClose);
       } catch (e) {
         reject(e);
       }
