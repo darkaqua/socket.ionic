@@ -96,7 +96,10 @@ export const getClientSocket = ({
           if (isClosed) return resolve();
 
           isConnected = false;
-          if (reconnect && reconnectIntents > reconnects) {
+          if (
+            reconnect &&
+            (reconnectIntents > reconnects || reconnectIntents === -1)
+          ) {
             emitEventCallback("reconnecting");
             reconnects++;
             !silent &&
